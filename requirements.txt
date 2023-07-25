@@ -1,0 +1,5 @@
+ python-slugify
+ flask 
+ flask-restful
+ SQLAlchemy
+ PyMySQL
