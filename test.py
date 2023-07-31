@@ -1,25 +1,14 @@
-from threading import Thread
-from queue import Queue
+d = {
+    'test':1,
+    'test':2,
+}
 
-q = Queue(5)
-i = 1
+def fun(**kwargs):
+    for key, val in kwargs.items():
+        # print(f"{key}={val}")
+        # 打印key的名字
+        print(key)
 
-def producer():
-    global i
-    q.put(f"包子{i}")
-    i += 1
-
-def consumer():
-    global i
-    q.get()
-    i -= 1
 
 if __name__ == "__main__":
-    while True:
-        a = input("输入1生产，输入2消费")
-        if a == "1":
-            producer()
-        elif a == "2":
-            consumer()
-        else:
-            break
+    fun(a=2,b=3)

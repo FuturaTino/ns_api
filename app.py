@@ -9,14 +9,15 @@
 
 from flask import Flask, request,jsonify
 from flask_restful import reqparse, abort, Api, Resource
-from slugify import slugify
 from pathlib import Path
+from capture import Capture
+from utils_db import *
 import json
 import time
-from capture import Capture
-from db_utils import *
-from bucket import *
-
+import redis,rq
+import utils_redis
+import utils_db
+from my_module import create_nerf
 app = Flask(__name__)
 api = Api(app)
 
@@ -40,14 +41,6 @@ cache_dict = {}
 #     if Capture_id not in capture_list:
 #         abort(404, message="Capture {} doesnt exist".format(Capture_id))
 
-def run_nerf(slug):
-    # 等待十秒，打印倒计时
-    print(f"nerf task [{slug}] is running")
-    # 开启一个线程 倒计时十秒
-    
-    for i in range(10,0,-1):
-        print(i)
-        time.sleep(1)
 
 # Capture
 class Caputures_Management(Resource):
@@ -70,7 +63,7 @@ class Caputures_Management(Resource):
             finally:
                 pass
             cache_dict = search_captures(title,username)
-        else:
+        elif not request.data and not request.form and not request.json: # 无参数
             # 获取所有的Capture的状态，返回一个json，包含所有的信息
             cache_dict = get_all_captures()
         
@@ -146,14 +139,26 @@ class single_Capture(Resource):
     
     # trigger a capture
     def post(self, slug):
-        if slug in cache_dict:    
+        if 1:
+            # 修改状态，添加到队列中
+            info = {
+                'status': "enqueued",
+                'latest_run_status': "enqueued",
+                'latest_run_current_stage': "enqueued",
+                'latest_run_progress': 0
+                
+            }
+            utils_db.update_capture(slug, **info)    
+            q = utils_redis.q # q.name = 'default'
             # triger the process of the capture and modify the status of the capture
-            run_nerf(slug)
-            return f"{slug} begins" , 201
+            job = q.enqueue(create_nerf, slug,job_timeout='2h')
+            
+
+            return f"{slug} is enquened" , 201
         else:
             return "No such slug", 400
 
 api.add_resource(Caputures_Management, "/capture")
 api.add_resource(single_Capture, "/capture/<slug>")
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True,host='0.0.0.0',port=8080)

@@ -1,22 +1,7 @@
 """
 对Caputure类进行封装，包含meta数据和对应的方法
 """
-# {
-#     "title": "sofa set",
-#     "type": "reconstruction",
-#     "date": "2023-03-26T15:54:08.268Z",
-#     "username": "karan",
-#     "status": "uploading",
-#     "slug": "pleasure-bless-j-243665"
-#     "latestRun": {
-#         "status": "new",
-#         "progress": 0,
-#         "currentStage": "Queued",
-#         "artifacts": []
-#     }
-#     "source_url": "https://storage.googleapis.com/...,
-#     "result_url": "https://storage.googleapis.com/...,
-# }
+
 
 currentStage = ['Preprocessing','Training','Postprocessing','Complete']
 status = ['waiting_for_upload','uploading','dispatched','finish','compelete'] # redis中的状态
@@ -25,6 +10,7 @@ from dataclasses import dataclass
 import time
 # dataclass
 @dataclass
+# 和数据库保持一致
 class Capture:
     def __init__(self,
                  title,
@@ -43,14 +29,12 @@ class Capture:
         # self.slug = self.username + "-" + self.title + "-" + random_num_str # username-title-103119
         self.slug = slug
         self.status="waiting_for_upload"
-        self.latestRun = {
-            "status": "dispatched",
-            "progress": 0,
-            "currentStage": "Preprocessing",
-            "artifacts": []
-        }
+        self.latest_run_status = "waiting_for_upload"
+        self.latest_run_progress = 0
+        self.latest_run_stage = "Preprocessing"
         self.source_url = source_url
         self.result_url = ""
+        self.job_id =""
     def test(self):
         print('test')
     
