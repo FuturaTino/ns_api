@@ -17,7 +17,8 @@ import time
 import redis,rq
 import utils_redis
 import utils_db
-from my_module import create_nerf
+import utils_bucket
+from my_module import *
 app = Flask(__name__)
 api = Api(app)
 
@@ -44,35 +45,28 @@ cache_dict = {}
 
 # Capture
 class Caputures_Management(Resource):
-    # get all captures
+    # get all captures or search
     def get(self):
+        # cache list
+        cache_dict = {}
         # 搜索
         title = None
         username = None
-        if request.form:
+        # 没有参数
+        if not request.form: # 无参数
+            # 获取所有的Capture的状态，返回一个json，包含所有的信息
+            cache_dict = get_all_captures()
+            return cache_dict, 200
+        elif request.form:
+            # 获取参数
             if request.form.__contains__("title"):
                 title = request.form["title"]
             if request.form.__contains__("username"):
                 username = request.form["username"]
             cache_dict = search_captures(title,username)
-        elif request.json:
-            args = parser.parse_args()
-            title = args["title"]
-            try:
-                username = args["username"]
-            finally:
-                pass
-            cache_dict = search_captures(title,username)
-        elif not request.data and not request.form and not request.json: # 无参数
-            # 获取所有的Capture的状态，返回一个json，包含所有的信息
-            cache_dict = get_all_captures()
+            return cache_dict, 200
+        return "no data",400
         
-        if not cache_dict:
-            return "No data",400
-        return cache_dict, 200
-        
-        
-
     # create a capture
     def post(self):
         if request.form:
@@ -89,44 +83,23 @@ class Caputures_Management(Resource):
             pass
         else: 
             return "No data", 400
-        print(request.form)
-        print(request.data)
 
         # 补充信息，根据参数,添加slug,source
         date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         random_num_str = date.split(' ')[1].replace(':','')
         slug = username + "-" + title + "-" + random_num_str # username-title-103119
-        source = get_bucket_source_url(slug)
+        source = utils_bucket.get_sign_url(slug)
         # source = Path.cwd() / "video_data" / slug 
         # 准备输出，到cache中，数据库中
         source = str(source)
-        capture =create_capture(title,username,slug=slug,source=source) # 创建实例，并添加到数据库中
+        capture =create_capture(title,username,slug=slug,source_url=source) # 创建实例，并添加到数据库中
         cache_dict[capture.slug] = capture.__dict__
         return capture.__dict__,200
-        
-    # upload a video temporarily
-    def put(self):
-        if not request.files:
-            return "No files", 400
-        
-        # 上传视频到指定的signedUrls中source文件夹中
-        if request.method == "PUT":
-            f = request.files['file']
-            # 接受data参数,一个表单，只能是一层
-            if request.form.__contains__('source'): # 指定存储路径
-                data = request.form
-                source = Path(data["source"])
-                print(source)
-                # 创建文件夹
-                if not source.exists():
-                    source.mkdir(parents=True, exist_ok=True)
-                print(source)
-                p = Path(source) / f.filename
-                f.save(p)
-            return "uploading successfully",200
-        else:
-            return "Not saved,please upload again", 400
     
+    def delete(self):
+        delete_all_captures()
+        return 201
+
 class single_Capture(Resource):
     # get a single capture
     def get(self, slug):
@@ -135,28 +108,40 @@ class single_Capture(Resource):
         if target:
             return target, 200
         else:
-            return "No such slug", 400
+            return f"No {slug}", 400
     
     # trigger a capture
     def post(self, slug):
-        if 1:
+        #从bucket中下载下来视频文件，放到data_dir/{slug}中
+        info = {
+            'status':'downloading',
+            'latest_run_status':'downloading',
+            'latest_run_current_stage':'downloading',
+        }
+        q_for_download = utils_redis.get_queue(queue_name='download_queue') # q_download.name = 'download_queue'
+        q_for_download.enqueue(download_video_from_bucket, slug,job_timeout='1h')
+        
+        if 0:
             # 修改状态，添加到队列中
             info = {
                 'status': "enqueued",
                 'latest_run_status': "enqueued",
                 'latest_run_current_stage': "enqueued",
                 'latest_run_progress': 0
-                
             }
             utils_db.update_capture(slug, **info)    
-            q = utils_redis.q # q.name = 'default'
+            q_nerf = utils_redis.get_queue(queue_name='nerf_queue') # q.name = 'nerf_queue'
             # triger the process of the capture and modify the status of the capture
-            job = q.enqueue(create_nerf, slug,job_timeout='2h')
+            job = q_nerf.enqueue(create_nerf, slug,job_timeout='2h')
             
 
-            return f"{slug} is enquened" , 201
+            return f"{slug} is enqueued" , 201
         else:
-            return "No such slug", 400
+            return f"{slug} is not enqueueed", 400
+    def delete(self, slug):
+        # 删除数据库中的记录，删除bucket中的文件
+        delete_capture(slug)
+        return f"secessfully deleted {slug}", 201
 
 api.add_resource(Caputures_Management, "/capture")
 api.add_resource(single_Capture, "/capture/<slug>")

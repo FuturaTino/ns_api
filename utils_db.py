@@ -149,21 +149,22 @@ def get_all_captures():
         return ret_dict
 
 def search_captures(title=None,username=None):
-    if not username: 
+    print(title,username,"in search_captures")
+    if title and not username: 
         statement = text("""
             SELECT * FROM captures_urls WHERE title = :title
             """)
         params = {
             "title":title,
         }
-    elif not title:
+    elif username and not title:
         statement = text("""
             SELECT * FROM captures_urls WHERE username = :username
             """)
         params = {
             "username":username,
         }
-    else:
+    elif username and title:
         statement = text("""
             SELECT * FROM captures_urls WHERE title = :title AND username = :username
             """)
@@ -171,6 +172,8 @@ def search_captures(title=None,username=None):
             "title":title,
             "username":username,
         }
+    else :
+        return None
     with engine.connect() as conn:
         result = conn.execute(statement=statement,parameters=params)
         rows= result.all()
@@ -195,6 +198,27 @@ def search_captures(title=None,username=None):
             }
             ret_dict[t['slug']] = t
         return ret_dict 
+
+def delete_capture(slug):
+    statement = text("""
+        DELETE FROM captures_urls WHERE slug = :slug
+        """)
+    params = {
+        "slug":slug
+    }
+    with engine.connect() as conn:
+        conn.execute(statement=statement,parameters=params)
+        conn.commit()
+    return 0
+
+def delete_all_captures():
+    statement = text("""
+        DELETE FROM captures_urls
+        """)
+    with engine.connect() as conn:
+        conn.execute(statement=statement)
+        conn.commit()
+    return 0
 
 if __name__ == "__main__":
     kwargs = {

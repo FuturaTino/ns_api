@@ -3,6 +3,7 @@ from sqlalchemy import text
 from pathlib import Path
 import utils_db
 from config import *
+import utils_bucket
 # config
 cwd = Path('/nerfstudio')
 data_parent_dir = cwd / f'data/nerfstudio'
@@ -19,8 +20,9 @@ video_path = data_dir / f'{slug}.mp4'
 # 连接数据库
 engine = utils_db.engine
 
-
-
+def download_video_from_bucket(slug):
+    filename = data_parent_dir / f'{slug}'
+    utils_bucket.download_to_local(slug,filename)
 def create_nerf(slug):
  
     # 1. 修改状态），started，processing

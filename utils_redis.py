@@ -5,9 +5,11 @@ import subprocess
 from config import *
 # pool = redis.ConnectionPool(host=redis_host,port=redis_port,db=0)
 redis = redis.Redis(host=redis_host,port=redis_port,db=0,username=redis_username,password=redis_password)
-q = rq.Queue(connection=redis)
 
-# test_meta
+
+def get_queue(queue_name):
+    q = rq.Queue(name=queue_name,connection=redis)
+    return q 
 
 
 

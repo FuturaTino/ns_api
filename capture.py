@@ -28,10 +28,10 @@ class Capture:
         # random_num_str = self.date.split(' ')[1].replace(':','')
         # self.slug = self.username + "-" + self.title + "-" + random_num_str # username-title-103119
         self.slug = slug
-        self.status="waiting_for_upload"
-        self.latest_run_status = "waiting_for_upload"
+        self.status="wait_for_upload"
+        self.latest_run_status = "wait_for_upload"
         self.latest_run_progress = 0
-        self.latest_run_stage = "Preprocessing"
+        self.latest_run_stage = "wait_for_upload"
         self.source_url = source_url
         self.result_url = ""
         self.job_id =""
