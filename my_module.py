@@ -18,14 +18,10 @@ title= slug.split('-')[1]
 data_dir = data_parent_dir / f'{slug}'
 video_path = data_dir / f'{slug}.mp4'
 
-
-# 连接数据库
-engine = utils_db.engine
-
 def download_video_to_dir_from_bucket(slug):
     filename = data_parent_dir / f'{slug}.mp4'
     utils_bucket.download_to_local(slug,filename)
-
+    return filename
 def create_nerf(slug):
  
     # 1. 修改状态），started，processing
