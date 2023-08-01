@@ -1,9 +1,11 @@
 import subprocess
+import zipfile
 from sqlalchemy import text
 from pathlib import Path
 import utils_db
 from config import *
 import utils_bucket
+import shutil
 # config
 cwd = Path('/nerfstudio')
 data_parent_dir = cwd / f'data/nerfstudio'
@@ -20,9 +22,10 @@ video_path = data_dir / f'{slug}.mp4'
 # 连接数据库
 engine = utils_db.engine
 
-def download_video_from_bucket(slug):
-    filename = data_parent_dir / f'{slug}'
+def download_video_to_dir_from_bucket(slug):
+    filename = data_parent_dir / f'{slug}.mp4'
     utils_bucket.download_to_local(slug,filename)
+
 def create_nerf(slug):
  
     # 1. 修改状态），started，processing
@@ -52,12 +55,15 @@ def create_nerf(slug):
         'latest_run_current_stage': 'Exporting',
     }
     utils_db.update_capture(slug,**info)
-    # 导出mesh
-    subprocess.run(f"ns-export poisson --load-config {config_path} --output-dir {data_dir / 'mesh'}",shell=True)
 
-
-     
-    # 将生成的文件夹,命名为job_id，压缩后上传到bucket中
+    # 4. 导出mesh,将生成的文件夹,命名为job_id ,上传到bucket
+    job_id = utils_db.get_a_capture(slug)['job_id']
+    specific_mesh_dir = data_dir / job_id
+    subprocess.run(f"ns-export poisson --load-config {config_path} --output-dir {specific_mesh_dir}",shell=True)
+    shutil.make_archive(specific_mesh_dir, 'zip',base_dir=specific_mesh_dir)
+    filename = specific_mesh_dir + '.zip'
+    key = specific_mesh_dir.split('/')[-1]
+    utils_bucket.upload_to_bucket(key,filename)
     # code
 
 

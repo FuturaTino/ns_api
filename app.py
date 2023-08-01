@@ -113,13 +113,14 @@ class single_Capture(Resource):
     # trigger a capture
     def post(self, slug):
         #从bucket中下载下来视频文件，放到data_dir/{slug}中
+        utils_bucket.download_to_local(slug,filename=data_dir / slug / f"{slug}.mp4")
         info = {
             'status':'downloading',
             'latest_run_status':'downloading',
             'latest_run_current_stage':'downloading',
         }
         q_for_download = utils_redis.get_queue(queue_name='download_queue') # q_download.name = 'download_queue'
-        q_for_download.enqueue(download_video_from_bucket, slug,job_timeout='1h')
+        q_for_download.enqueue(download_video_to_dir_from_bucket, slug,job_timeout='1h')
         
         if 0:
             # 修改状态，添加到队列中
@@ -133,7 +134,9 @@ class single_Capture(Resource):
             q_nerf = utils_redis.get_queue(queue_name='nerf_queue') # q.name = 'nerf_queue'
             # triger the process of the capture and modify the status of the capture
             job = q_nerf.enqueue(create_nerf, slug,job_timeout='2h')
-            
+            job_id = job.get_id()
+            update_capture(slug,job_id=job_id)
+
 
             return f"{slug} is enqueued" , 201
         else:

@@ -71,7 +71,7 @@ def trigger_capture(slug):
     # 修改status 和 latest_run_status和latest_run_current_stage和latest_run_progress和latest_run_artifacts
     pass
 
-def update_capture(slug,**kwargs):
+def update_capture(slug,**kwargs)->int:
     """
     **kwargs: key-value pairs in table columns
     """
