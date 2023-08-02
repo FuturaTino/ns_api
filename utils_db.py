@@ -101,7 +101,7 @@ def get_a_capture(slug):
     with engine.connect() as conn:
         result = conn.execute(statement=statement,parameters=params)
         rows= result.all()
-        if not rows:
+        if len(rows) == 0:
             return None
         ret = {}
         for i in rows:

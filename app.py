@@ -107,7 +107,7 @@ class single_Capture(Resource):
         if target:
             return target, 200
         else:
-            return f"No {slug}", 400
+            return f'no {slug}', 200
     
     # trigger a capture
     def post(self, slug):

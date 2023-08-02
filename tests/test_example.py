@@ -17,7 +17,7 @@ base_name = fr'{str(cwd)}\123213412321341242131'
 print(base_name)
 archive = Path(rf'C:\Users\future\Desktop\eraLi')
 root_dir = Path('C:/User/future/Desktop')
-video_path = '../eraLi.mp4'
+video_path = '../map.jpg'
 
 
 url = 'http://localhost:8080/capture'
@@ -29,13 +29,19 @@ class Test_capture:
         capture_data = response.json()
         slug = capture_data['slug']
         source_url = capture_data['source_url']
+    def test_get_all_captures(self):
+        # get all captures
+        assert requests.get(url)
+    def test_get_single_capture(self):
+        # get single capture
+        assert requests.get(url_single)
     def test_upload_to_bucket(self):
         slug = 'future-test-123456'
         utils_bucket.upload_to_bucket(slug,filename=video_path)
     def test_triger_nerf(self):
         response = requests.post
-    def test_delete_capture(self):
-        # #只在linux上测试
-        # url_single = url + '/' + slug
-        # requests.post(url=url_single) # 触发nerf
-
+    def test_download_from_bucket(self):
+        slug = 'future-test-123456'
+        utils_bucket.download_to_local(slug,'test.jpg')
+        # 删掉下载的文件
+        os.remove('test.jpg')
