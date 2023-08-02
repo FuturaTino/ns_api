@@ -35,7 +35,4 @@ class Capture:
         self.source_url = source_url
         self.result_url = ""
         self.job_id =""
-    def test(self):
-        print('test')
-    
     

@@ -66,7 +66,6 @@ class Caputures_Management(Resource):
             cache_dict = search_captures(title,username)
             return cache_dict, 200
         return "no data",400
-        
     # create a capture
     def post(self):
         if request.form:
