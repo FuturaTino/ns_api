@@ -1,5 +1,9 @@
- python-slugify
- flask 
- flask-restful
- SQLAlchemy
- PyMySQL
+flask 
+flask-restful
+SQLAlchemy==2.0.19
+PyMySQL
+redis
+rq
+cffi
+cryptography
+oss2 
