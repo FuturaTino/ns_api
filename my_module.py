@@ -14,64 +14,67 @@ output_dir = cwd / f'outputs'
 # test_meta
 test_slug = 'future-eraLi-123456'
 slug = test_slug
-title= slug.split('-')[1]
 data_dir = data_parent_dir / f'{slug}'
 video_path = data_dir / f'{slug}.mp4'
 
 def download_video_to_dir_from_bucket(slug):
+    key = f'{slug}.mp4'
     filename = data_parent_dir / f'{slug}.mp4'
-    utils_bucket.download_to_local(slug,filename)
+    utils_bucket.download_to_local(key,filename)
     return filename
 def create_nerf(slug):
- 
-    # 1. 修改状态），started，processing
+    info = {
+        'status':'downloading',
+        'latest_run_status':'downloading',
+        'latest_run_current_stage':'downloading',
+    }
+    utils_db.update_capture(slug,**info) # 下载中
+    download_video_to_dir_from_bucket(slug)
+
+    # 1. Started processing
     info = {
         'latest_run_status':'Started',
         'latest_run_current_stage': 'Preprocessing',
     }
     utils_db.update_capture(slug,**info)
-    # 处理数据
+    data_dir = data_parent_dir / f'{slug}'
     subprocess.run(f"ns-process-data video --data {video_path} --output-dir {data_dir}",shell=True)
 
+    # 2. Start training
     info = {
         'latest_run_current_stage': 'Training',
     }
-    # 2. 修改状态，training
     utils_db.update_capture(slug,**info)
-    # 训练nerf
     subprocess.run(f"ns-train nerfacto --data {data_dir}  --output-dir {output_dir} --pipeline.model.predict-normals True \
         --max-num-iterations {200} --save-only-latest-checkpoint True --vis tensorboard  ",shell=True,cwd='/nerfstudio')
 
-    # 3. 修改状态, Exporting
+    # 3. Start exporting mesh
     specific_output_dir = cwd / 'outputs' / slug
-    config_path = specific_output_dir.glob('**/config.yml').__next__()
-    if not config_path.exists():
-        return 1
+    config_path = next(specific_output_dir.glob('**/config.yml'), None)
+    if config_path is None:
+        return 'config_path doesnt exist',1
     info = {
         'latest_run_current_stage': 'Exporting',
     }
     utils_db.update_capture(slug,**info)
-
-    # 4. 导出mesh,将生成的文件夹,命名为job_id ,上传到bucket
     job_id = utils_db.get_a_capture(slug)['job_id']
     specific_mesh_dir = data_dir / job_id
     subprocess.run(f"ns-export poisson --load-config {config_path} --output-dir {specific_mesh_dir}",shell=True)
-    shutil.make_archive(specific_mesh_dir, 'zip',base_dir=specific_mesh_dir)
-    filename = specific_mesh_dir + '.zip'
-    key = specific_mesh_dir.split('/')[-1]
+
+    # 4. Upload mesh to bucket
+    shutil.make_archive(base_name=job_id, format='zip', base_dir=specific_mesh_dir)
+    filename = specific_mesh_dir / '.zip'
+    key = f'{job_id}.zip'
     utils_bucket.upload_to_bucket(key,filename)
-    # code
-
-
+    # Update result_url and status
+    result_url = utils_bucket.get_sign_url_download(key=key)
     info = {
         'status':'Finished',
         'latest_run_current_stage': 'Finished',
         'latest_run_progress': 100,
-        'result_url':'test',
+        'result_url':result_url,
     }
     utils_db.update_capture(slug,**info)
-
-    # 任务完成后，清理显存
     print('job finished')
     
 if __name__ == "__main__":

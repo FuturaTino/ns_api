@@ -18,7 +18,9 @@ import redis,rq
 import utils_redis
 import utils_db
 import utils_bucket
-from my_module import *
+from my_module import create_nerf
+from config import *
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -36,11 +38,6 @@ parser.add_argument("latestRun", type=dict)
 
 # cache list
 cache_dict = {}
-
-
-# def abort_if_List_doesnt_exist(Capture_id):
-#     if Capture_id not in capture_list:
-#         abort(404, message="Capture {} doesnt exist".format(Capture_id))
 
 
 # Capture
@@ -87,7 +84,8 @@ class Caputures_Management(Resource):
         date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         random_num_str = date.split(' ')[1].replace(':','')
         slug = username + "-" + title + "-" + random_num_str # username-title-103119
-        source = utils_bucket.get_sign_url(slug)
+        key_video = f'{slug}.mp4'
+        source = utils_bucket.get_sign_url(key=key_video)
         # source = Path.cwd() / "video_data" / slug 
         # 准备输出，到cache中，数据库中
         source = str(source)
@@ -111,27 +109,17 @@ class single_Capture(Resource):
     
     # trigger a capture
     def post(self, slug):
-        #从bucket中下载下来视频文件，放到data_dir/{slug}中
-        utils_bucket.download_to_local(slug,filename=data_dir / slug / f"{slug}.mp4")
-        info = {
-            'status':'downloading',
-            'latest_run_status':'downloading',
-            'latest_run_current_stage':'downloading',
-        }
-        q_for_download = utils_redis.get_queue(queue_name='download_queue') # q_download.name = 'download_queue'
-        q_for_download.enqueue(download_video_to_dir_from_bucket, slug,job_timeout='1h')
-        
+
         if 0:
-            # 修改状态，添加到队列中
+            # 1. Enqueued job
             info = {
-                'status': "enqueued",
-                'latest_run_status': "enqueued",
-                'latest_run_current_stage': "enqueued",
+                'status': "Enqueued",
+                'latest_run_status': "Enqueued",
+                'latest_run_current_stage': "Enqueued",
                 'latest_run_progress': 0
             }
             utils_db.update_capture(slug, **info)    
             q_nerf = utils_redis.get_queue(queue_name='nerf_queue') # q.name = 'nerf_queue'
-            # triger the process of the capture and modify the status of the capture
             job = q_nerf.enqueue(create_nerf, slug,job_timeout='2h')
             job_id = job.get_id()
             update_capture(slug,job_id=job_id)
